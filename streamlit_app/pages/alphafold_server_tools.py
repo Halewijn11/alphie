@@ -14,11 +14,13 @@ debug = 0
 cached_time = 0
 time_window_hours = 1
 time_window_filtering_mode = 'last_session'
+current_dir = os.path.dirname(__file__)
+asset_path = os.path.join(current_dir, "..", "assets")
 
 st.title("Alphafold server tools")
 
 
-df_example = pd.read_csv('./assets/test.csv', sep=None, engine='python', encoding='utf-8-sig')
+df_example = pd.read_csv(asset_path + '/test.csv', sep=None, engine='python', encoding='utf-8-sig')
 # 2. Convert the DataFrame to a CSV string (as bytes)
 csv_bytes = df_example.to_csv(index=False).encode('utf-8')
 
