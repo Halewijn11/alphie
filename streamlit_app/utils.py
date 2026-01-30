@@ -2,6 +2,8 @@ import pandas as pd
 import os, json
 import zipfile
 import io
+from Bio import SeqIO
+
 
 def create_alphafold_json_files(
     df,
@@ -151,3 +153,144 @@ def create_zip(files_dict):
         for filename, content in files_dict.items():
             zip_file.writestr(filename, content)
     return zip_buffer.getvalue()
+
+
+
+
+def fasta_to_dataframe_streamlit(fasta_input, genome_name=None):
+    records = []
+    for record in SeqIO.parse(fasta_input, "fasta"):
+        records.append({"id": record.id, "sequence": str(record.seq)})
+    df = pd.DataFrame(records)
+    df= df.rename({'id': 'prediction_id'}, axis = 1)
+
+    return df
+
+
+def gbk_to_dataframe_streamlit(gbk_input, genome_filename, suffix = '.gbk'):
+    """
+    Parse a GenBank file and convert features (with qualifiers) to a pandas DataFrame.
+
+    Parameters:
+        gbk_path (str): Path to the GenBank (.gbk) file.
+        genome_name (str): Name of the genome.
+
+    Returns:
+        pd.DataFrame: DataFrame containing feature metadata and qualifiers.
+    """
+    records = list(SeqIO.parse(gbk_input, "genbank"))
+    data = []
+
+    for record in records:
+        for feature in record.features:
+            feature_data = {
+                "genome": genome_filename,
+                "id": record.id,
+                "record_description": record.description,
+                "feature_type": feature.type,
+                "start": int(feature.location.start),
+                "end": int(feature.location.end),
+                "strand": feature.location.strand,
+            }
+
+            # Explicitly extract common qualifiers
+            common_keys = [
+                "gene", "locus_tag", "product", "note", "db_xref",
+                "translation", "protein_id", "codon_start"
+            ]
+
+            for key in common_keys:
+                feature_data[key] = "; ".join(feature.qualifiers.get(key, []))
+
+            # Optional: capture all other qualifiers too
+            for key, value in feature.qualifiers.items():
+                if key not in common_keys:
+                    feature_data[f"qual_{key}"] = "; ".join(value)
+
+            data.append(feature_data)
+
+    df = pd.DataFrame(data)
+    df = df[df['feature_type'] == 'CDS']
+    df = df[['locus_tag', 'translation']]
+    df = df.rename({"locus_tag": "prediction_id", 'translation': 'sequence'}, axis = 1)
+    return df
+
+
+def convert_sequence_to_csv(uploaded_file):
+    # 1. Convert bytes to a text stream
+    # .getvalue() gets the raw bytes, .decode("utf-8") makes it text
+    string_data = uploaded_file.getvalue().decode("utf-8")
+    file_buffer = io.StringIO(string_data)
+    
+    filename = uploaded_file.name
+    ext = filename.split('.')[-1].lower()
+
+    # 2. Route to your adapted functions
+    if ext in ['fasta', 'fa', 'faa']:
+        df = fasta_to_dataframe_streamlit(file_buffer, genome_name=filename)
+        print(df.columns)
+    elif ext in ['gbk', 'gb']:
+        df = gbk_to_dataframe_streamlit(file_buffer, genome_filename=filename)
+    else:
+        return None
+
+    # 3. Return the final CSV bytes
+    return df.to_csv(index=False).encode('utf-8')
+
+
+
+
+
+
+
+
+# def convert_sequence_to_csv(uploaded_file):
+#     """
+#     Adapts fasta_to_dataframe and gbk_to_dataframe logic for Streamlit.
+#     Returns: bytes (CSV format)
+#     """
+#     # 1. Setup
+#     filename = uploaded_file.name
+#     file_ext = os.path.splitext(filename)[1].lower()
+    
+#     # Biopython needs a text stream for parsing
+#     # We decode the uploaded bytes to string
+#     stringio = io.StringIO(uploaded_file.getvalue().decode("utf-8"))
+    
+#     data = []
+
+#     # 2. Handle FASTA
+#     if file_ext in ['.fasta', '.fa']:
+#         for record in SeqIO.parse(stringio, "fasta"):
+#             data.append({
+#                 "prediction_id": record.id,
+#                 "sequence": str(record.seq),
+#                 "entity_type": "protein",
+#                 "copies": 1
+#             })
+
+#     # 3. Handle GenBank (Flattening Features)
+#     elif file_ext in ['.gbk', '.gb']:
+#         for record in SeqIO.parse(stringio, "genbank"):
+#             for feature in record.features:
+#                 # We usually only want 'CDS' or 'protein' features for AlphaFold
+#                 # But here we keep it flexible like your gbk_to_dataframe logic
+#                 if feature.type == "CDS" or "translation" in feature.qualifiers:
+#                     translation = "; ".join(feature.qualifiers.get("translation", []))
+#                     locus_tag = "; ".join(feature.qualifiers.get("locus_tag", [record.id]))
+                    
+#                     if translation: # Only add if there is a sequence
+#                         data.append({
+#                             "prediction_id": locus_tag,
+#                             "sequence": translation,
+#                             "entity_type": "protein",
+#                             "copies": 1,
+#                             "gene_name": "; ".join(feature.qualifiers.get("gene", []))
+#                         })
+
+#     if not data:
+#         return None
+
+#     # 4. Convert to DataFrame and then to CSV Bytes
+#     df = pd.DataFrame(data)
+#     return df.to_csv(index=False).encode('utf-8')

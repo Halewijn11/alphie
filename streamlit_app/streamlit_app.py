@@ -5,7 +5,14 @@ import pandas as pd
 importlib.reload(utils)
 
 # --- PAGE SETUP ---
-dashboard_page = st.Page(
+genome_file_conversion = st.Page(
+    "pages/genome_file_to_dataframe.py",
+    title="Genome file to dataframe",
+    # icon=":material/bar_chart:",
+    # default=True,
+)
+
+alphafold_server_tools = st.Page(
     "pages/alphafold_server_tools.py",
     title="Alphafold server tools",
     icon=":material/bar_chart:",
@@ -31,7 +38,7 @@ info_page = st.Page(
 # )
 
 # --- NAVIGATION SETUP [WITHOUT SECTIONS] ---
-pg = st.navigation(pages=[dashboard_page, info_page])
+pg = st.navigation(pages=[genome_file_conversion, alphafold_server_tools, info_page])
 
 # --- RUN NAVIGATION ---
 pg.run()
