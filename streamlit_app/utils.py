@@ -1,8 +1,11 @@
+from xml.parsers.expat import model
 import pandas as pd
 import os, json
 import zipfile
 import io
 from Bio import SeqIO
+import numpy as np
+import re
 
 
 def create_alphafold_json_files(
@@ -237,60 +240,134 @@ def convert_sequence_to_csv(uploaded_file):
     # 3. Return the final CSV bytes
     return df.to_csv(index=False).encode('utf-8')
 
+def get_summary_confidence_informations(json_summary_confidences_filepath, model = 'AF3'): 
+    with open(json_summary_confidences_filepath, 'r') as f:
+        data = json.load(f)
+        iptm = data['iptm']
+        ptm = data['ptm']
+        ranking_score = data['ranking_score']
+        chain_ptm = data['chain_ptm']
+        chain_iptm = data['chain_iptm']
+        
+    return iptm, ptm, ranking_score,chain_ptm, chain_iptm
 
 
-
-
-
-
-
-# def convert_sequence_to_csv(uploaded_file):
-#     """
-#     Adapts fasta_to_dataframe and gbk_to_dataframe logic for Streamlit.
-#     Returns: bytes (CSV format)
-#     """
-#     # 1. Setup
-#     filename = uploaded_file.name
-#     file_ext = os.path.splitext(filename)[1].lower()
+def get_AF3_summary_confidence_files(AF_prediction_path, title):
+    # Define the regex pattern to match summary confidence files
+    pattern =  rf'^fold_{re.escape(title)}_summary_confidences_\d+\.json$'
     
-#     # Biopython needs a text stream for parsing
-#     # We decode the uploaded bytes to string
-#     stringio = io.StringIO(uploaded_file.getvalue().decode("utf-8"))
+    # List files in the directory and filter those matching the pattern
+    summary_confidence_files = [
+        text for text in os.listdir(AF_prediction_path) if re.search(pattern, text)
+    ]
+    return summary_confidence_files
+
+def get_best_AF3_model_info(model_repository_path, model_repository_name, sort_by = 'ranking_score', model='AF3'): 
+    """
+    Returns:
+        best_cif_filename (str): The best CIF filename.
+        best_model_nr (int): The best model number.
+        best_iptm (float): The best inter-chain predicted TM-score.
+        best_ptm (float): The best predicted TM-score.
+        best_ranking_score (float): The best ranking score.
+    """
+    if not os.path.exists(model_repository_path):
+        # print('been here')
+        print(f"Warning: Model repository path '{model_repository_path}' does not exist. Skipping...")
+        return '', None, None, None, None, None, None
     
-#     data = []
+    
+    confidence_filename_list = get_AF3_summary_confidence_files(model_repository_path, model_repository_name)
+        # confidence_filename_list = get_chai_summary_confidence_files(model_repository_path, model_repository_name)
+    
+    iptm_array = []
+    ranking_score_array = []
+    ptm_array = []
+    model_nr_array = []
+    chain_ptm_array = []
+    chain_iptm_array = []
+    for ii in range(len(confidence_filename_list)): 
+        model_nr_array += [ii]
+        confidence_filename = confidence_filename_list[ii]
+        full_json_path = os.path.join(model_repository_path, confidence_filename)
+        iptm, ptm, ranking_score, chain_ptm, chain_iptm = get_summary_confidence_informations(full_json_path, model=model)
+        # iptm, ptm, ranking_score,chain_ptm, chain_iptm = get_summary_confidence_informations(model_repository_path + confidence_filename, model = model)
+        iptm_array += [iptm]
+        ptm_array += [ptm]
+        ranking_score_array += [ranking_score]
+        chain_ptm_array += [chain_ptm]
+        chain_iptm_array += [chain_iptm]
+    confidence_df = pd.DataFrame({'filename': confidence_filename_list,
+                'model_nr': model_nr_array,
+                 'iptm': iptm_array,
+                 'ptm': ptm_array,
+                 'ranking_score': ranking_score_array,
+                'chain_ptm': chain_ptm_array,
+                'chain_iptm': chain_iptm_array})
+    ranked_confidence_df = confidence_df.copy().sort_values(sort_by, ascending = False).reset_index(drop = True)
+    best_row = ranked_confidence_df.iloc[0]
+    best_model_nr = best_row['model_nr']
+    best_iptm = best_row['iptm']
+    best_ptm = best_row['ptm']
+    best_ranking_score = best_row['ranking_score']
+    best_chain_ptm = best_row['chain_ptm']
+    best_chain_iptm = best_row['chain_iptm']
+    if model == 'AF3':
+        best_cif_filename = 'fold_' + model_repository_name + '_model_' + str(best_model_nr) + '.cif'
+    elif (model == 'boltz1'):
+        best_cif_filename = 'abc_' + model_repository_name + '_mmseqs_model_' + str(best_model_nr) + '.cif'
+    elif (model == 'chai1'):
+        best_cif_filename = 'pred.model_idx_' +  str(best_model_nr) + '.cif'
 
-#     # 2. Handle FASTA
-#     if file_ext in ['.fasta', '.fa']:
-#         for record in SeqIO.parse(stringio, "fasta"):
-#             data.append({
-#                 "prediction_id": record.id,
-#                 "sequence": str(record.seq),
-#                 "entity_type": "protein",
-#                 "copies": 1
-#             })
+    return best_cif_filename, best_model_nr, best_iptm, best_ptm, best_ranking_score,best_chain_ptm,best_chain_iptm
 
-#     # 3. Handle GenBank (Flattening Features)
-#     elif file_ext in ['.gbk', '.gb']:
-#         for record in SeqIO.parse(stringio, "genbank"):
-#             for feature in record.features:
-#                 # We usually only want 'CDS' or 'protein' features for AlphaFold
-#                 # But here we keep it flexible like your gbk_to_dataframe logic
-#                 if feature.type == "CDS" or "translation" in feature.qualifiers:
-#                     translation = "; ".join(feature.qualifiers.get("translation", []))
-#                     locus_tag = "; ".join(feature.qualifiers.get("locus_tag", [record.id]))
-                    
-#                     if translation: # Only add if there is a sequence
-#                         data.append({
-#                             "prediction_id": locus_tag,
-#                             "sequence": translation,
-#                             "entity_type": "protein",
-#                             "copies": 1,
-#                             "gene_name": "; ".join(feature.qualifiers.get("gene", []))
-#                         })
 
-#     if not data:
-#         return None
+def get_structome_best_model_metadata(AF_structure_repository_path, model = 'AF3'): 
+    prediction_names_list = [
+        d for d in os.listdir(AF_structure_repository_path) 
+        if os.path.isdir(os.path.join(AF_structure_repository_path, d))
+    ] #only the ones that are directories
+    cif_filename_array = []
+    iptm_array = []
+    ptm_array = []
+    ranking_score_array = []
+    chain_ptm_array = []
+    chain_iptm_array = []
+    cif_filepath_array = []
+    prediction_type_array = []
+    
+    for ii in range(len(prediction_names_list)): 
+        prediction_name = prediction_names_list[ii]
 
-#     # 4. Convert to DataFrame and then to CSV Bytes
-#     df = pd.DataFrame(data)
-#     return df.to_csv(index=False).encode('utf-8')
+        prediction_repository = os.path.join(AF_structure_repository_path, prediction_name)
+
+
+            # prediction_repository = AF_structure_repository_path + prediction_name + '/'
+        cif_filename, best_model_nr, best_iptm, best_ptm, best_ranking_score,best_chain_ptm, best_chain_iptm =get_best_AF3_model_info(prediction_repository,prediction_name, model = model)
+        cif_filepath_array += [os.path.join(prediction_repository, cif_filename)]
+        cif_filename_array += [cif_filename]
+        iptm_array += [best_iptm]
+        ptm_array += [best_iptm]
+        ranking_score_array += [best_ranking_score]
+        chain_ptm_array += [best_chain_ptm]
+        chain_iptm_array += [best_chain_iptm]
+        prediction_type_array += [model]
+    
+    AF_repository_metadata = pd.DataFrame({'prediction_id': prediction_names_list,
+                    'cif_filename': cif_filename_array,
+                    'cif_filepath': cif_filepath_array,
+                                           'iptm': iptm_array,
+                                          'ptm': ptm_array,
+                                          'ranking_score': ranking_score_array,
+                                          'chain_ptm': chain_ptm_array,
+                                          'chain_iptm': chain_iptm_array,
+                                          'prediction_type': prediction_type_array
+                                          })
+    AF_repository_metadata['filepath'] = (
+        AF_structure_repository_path +
+        AF_repository_metadata['prediction_id'].astype(str) + '/' +
+        AF_repository_metadata['cif_filename'].astype(str)
+    )
+    AF_repository_metadata = AF_repository_metadata[['prediction_id', 'iptm', 'ptm', 'chain_ptm', 'chain_iptm']]
+    return AF_repository_metadata
+

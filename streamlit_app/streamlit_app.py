@@ -8,7 +8,7 @@ importlib.reload(utils)
 genome_file_conversion = st.Page(
     "pages/genome_file_to_dataframe.py",
     title="Genome file to dataframe",
-    # icon=":material/bar_chart:",
+    icon=":material/table:",
     # default=True,
 )
 
@@ -24,6 +24,13 @@ alphafold_server_tools = st.Page(
 #     icon=":material/memory:",
 # )
 
+retrieve_scoring_metrics = st.Page(
+    "pages/retrieve_scoring_metrics.py",
+    title="Retrieve scoring metrics",
+    icon=":material/analytics:",
+)
+
+
 info_page = st.Page(
     "pages/info.py",
     title="info",
@@ -38,7 +45,7 @@ info_page = st.Page(
 # )
 
 # --- NAVIGATION SETUP [WITHOUT SECTIONS] ---
-pg = st.navigation(pages=[genome_file_conversion, alphafold_server_tools, info_page])
+pg = st.navigation(pages=[genome_file_conversion, alphafold_server_tools, retrieve_scoring_metrics, info_page])
 
 # --- RUN NAVIGATION ---
 pg.run()
