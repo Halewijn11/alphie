@@ -40,13 +40,30 @@ if seq_file:
         base_name = os.path.splitext(seq_file.name)[0]
         new_filename = f"{base_name}_converted.csv"
 
-        # 4. Download Button (Only one needed!)
-        st.download_button(
-            label="Download AlphaFold-ready CSV",
-            data=df.to_csv(index=False).encode('utf-8'),
-            file_name=new_filename,
+# --- DOWNLOAD SECTION ---
+        st.write("### Export Options")
+        col1, col2 = st.columns(2)
+
+        # 1. CSV Download Button
+        csv_data = df.to_csv(index=False).encode('utf-8')
+        col1.download_button(
+            label="Download as CSV",
+            data=csv_data,
+            file_name=f"{base_name}_converted.csv",
             mime="text/csv"
         )
+
+        # 2. XLSX Download Button
+        # Create an in-memory buffer for the Excel file
+        excel_buffer = io.BytesIO()
+        with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='AlphaFold_Input')
         
+        col2.download_button(
+            label="Download as Excel (XLSX)",
+            data=excel_buffer.getvalue(),
+            file_name=f"{base_name}_converted.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
     else:
         st.error("No valid sequences or translations found in file.")
