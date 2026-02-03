@@ -368,6 +368,6 @@ def get_structome_best_model_metadata(AF_structure_repository_path, model = 'AF3
         AF_repository_metadata['prediction_id'].astype(str) + '/' +
         AF_repository_metadata['cif_filename'].astype(str)
     )
-    AF_repository_metadata = AF_repository_metadata[['prediction_id', 'iptm', 'ptm', 'chain_ptm', 'chain_iptm']]
+    AF_repository_metadata = AF_repository_metadata[['prediction_id', 'iptm', 'ptm', 'chain_ptm', 'chain_iptm', 'cif_filepath', 'cif_filename']]
     return AF_repository_metadata
 

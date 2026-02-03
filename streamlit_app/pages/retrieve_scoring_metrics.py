@@ -8,6 +8,8 @@ import shutil
 import io
 import utils # Assuming your extraction logic is in here
 importlib.reload(utils)
+import af_analysis
+from af_analysis import analysis
 
 st.title("AlphaFold Metrics Extractor")
 
@@ -32,15 +34,27 @@ if zip_file:
         # Replace 'utils.extract_metrics' with your actual function name
         try:
             with st.spinner("Extracting metrics..."):
-                df_metrics = utils.get_structome_best_model_metadata(extract_path)
-                print(df_metrics)
+                prediction_names_list = [
+                    d for d in os.listdir(extract_path) 
+                    if os.path.isdir(os.path.join(extract_path, d))
+                ] 
+                df_array = []
+                for prediction_name in prediction_names_list: 
+                    prediction_path = os.path.join(extract_path, prediction_name)
+                    # st.write(f"Processing: {prediction_name} at {prediction_path}")
+                    my_data = af_analysis.Data(prediction_path, format = 'AF3_webserver')
+                    analysis.ipSAE(my_data)
+                    df = my_data.df
+                    # st.dataframe(df)
+                    df_array.append(df)
             
+            df_metrics = pd.concat(df_array, ignore_index=True)
             if not df_metrics.empty:
                 st.subheader("Extracted Metrics")
                 st.dataframe(df_metrics)
 
                 # Create two columns for side-by-side buttons
-                col1, col2 = st.columns(2)
+                col1, col2, col3 = st.columns(3)
 
                 # 1. CSV Download
                 csv_data = df_metrics.to_csv(index=False).encode('utf-8')
@@ -63,5 +77,22 @@ if zip_file:
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
                 
+                # 3. ZIP Download (Best CIF files only)
+                zip_buffer = io.BytesIO()
+                with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as new_zip:
+                    for _, row in df_metrics.iterrows():
+                        file_path = row['pdb']
+                        file_name = row['query']
+                        if os.path.exists(file_path):
+                            # Add file to zip: (actual path on disk, name inside the zip)
+                            new_zip.write(file_path, arcname=file_name)
+                
+                col3.download_button(
+                    label="Download Best .cif Files",
+                    data=zip_buffer.getvalue(),
+                    file_name=f"best_models_{os.path.splitext(zip_file.name)[0]}.zip",
+                    mime="application/zip"
+                )
+    
         except Exception as e:
             st.error(f"An error occurred during processing: {e}")
