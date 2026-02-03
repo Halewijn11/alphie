@@ -2,5 +2,12 @@ streamlit
 pandas
 biopython
 openpyxl
-# The library itself - use the subdirectory egg fragment
+numpy
+matplotlib
+seaborn
+cmcrameri
+tqdm
+pdb_numpy
+
+# Place the GitHub link at the absolute end
 af_analysis @ git+https://github.com/samuelmurail/af_analysis.git
