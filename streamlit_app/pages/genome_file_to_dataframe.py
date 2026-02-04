@@ -20,7 +20,12 @@ asset_path = os.path.join(current_dir, "..", "assets")
 
 st.title("Alphafold server tools")
 
+description = """
+This tool simplifies the transition from genomic files to AlphaFold 3 inputs by converting your gene annotation files into a structured format. Simply upload a FASTA or GenBank file, and the tool will automatically extract the protein translations and locus tags into a data table. By default, it assigns each entry as a "protein" entity with a single copy, creating a compatible template for the AlphaFold Server Tools tab. Once the conversion is complete, you can download the resulting table as a CSV or Excel file to be used in the next stage of your workflow.
 
+Happy Folding!
+"""
+st.write(description)
 
 # 1. File Uploader
 seq_file = st.file_uploader("Upload your gene annotation file ", type=["fasta", "faa", "gbk", "gb"])

@@ -16,7 +16,6 @@ alphafold_server_tools = st.Page(
     "pages/alphafold_server_tools.py",
     title="Alphafold server tools",
     icon=":material/bar_chart:",
-    default=True,
 )
 # status_page = st.Page(
 #     "pages/status.py",
@@ -35,6 +34,7 @@ info_page = st.Page(
     "pages/info.py",
     title="info",
     icon=":material/info:",
+    default=True,
 )
 
 
@@ -45,7 +45,7 @@ info_page = st.Page(
 # )
 
 # --- NAVIGATION SETUP [WITHOUT SECTIONS] ---
-pg = st.navigation(pages=[genome_file_conversion, alphafold_server_tools, retrieve_scoring_metrics, info_page])
+pg = st.navigation(pages=[info_page, genome_file_conversion, alphafold_server_tools, retrieve_scoring_metrics])
 
 # --- RUN NAVIGATION ---
 pg.run()

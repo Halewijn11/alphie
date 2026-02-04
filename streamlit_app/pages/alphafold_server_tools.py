@@ -19,7 +19,12 @@ asset_path = os.path.join(current_dir, "..", "assets")
 
 st.title("Alphafold server tools")
 
+documentation_text ="""
+This tool converts your sequence data into the specific JSON format required for AlphaFold 3 server submissions. To use it, upload a CSV file containing prediction_id and sequence columns; any rows sharing the same ID will be grouped into a single multimer or protein-ligand prediction. The tool automatically divides your data into batches of 30 jobs per JSON file to stay within the server's daily upload limit. Once generated, you can download these batches individually or as a ZIP file and upload them directly to the [AlphaFold 3 Server](https://alphafoldserver.com/) to begin your predictions.
 
+Happy Folding!
+"""
+st.write(documentation_text)
 df_example = pd.read_csv(asset_path + '/test.csv', sep=None, engine='python', encoding='utf-8-sig')
 # 2. Convert the DataFrame to a CSV string (as bytes)
 csv_bytes = df_example.to_csv(index=False).encode('utf-8')
