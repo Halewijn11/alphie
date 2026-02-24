@@ -83,8 +83,29 @@ if 'json_results' not in st.session_state:
     st.session_state.json_results = None
 
 if uploaded_file:
-    df = pd.read_csv(uploaded_file, sep=None, engine='python', encoding='utf-8-sig')
-    st.write("Preview:", df)
+    try:
+        # Check the file extension
+        if uploaded_file.name.endswith('.csv'):
+            # Try UTF-8 first, then Latin-1 for CSVs
+            try:
+                uploaded_file.seek(0)
+                df = pd.read_csv(uploaded_file, sep=None, engine='python', encoding='utf-8-sig')
+            except UnicodeDecodeError:
+                uploaded_file.seek(0)
+                df = pd.read_csv(uploaded_file, sep=None, engine='python', encoding='latin1')
+        
+        elif uploaded_file.name.endswith(('.xlsx', '.xls')):
+            # Excel files don't need 'encoding' or 'sep'
+            df = pd.read_excel(uploaded_file)
+
+        st.success("File loaded successfully!")
+        st.write("Preview:", df)
+        
+        # Save to session state for your JSON logic
+        st.session_state.df = df 
+
+    except Exception as e:
+        st.error(f"Error loading file: {e}")
 
     # 2. When the button is clicked, save the output to session_state
     if st.button("Generate JSON Batches"):
