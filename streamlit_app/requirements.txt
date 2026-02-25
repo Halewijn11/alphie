@@ -8,6 +8,5 @@ seaborn
 cmcrameri
 tqdm
 pdb_numpy
-
 # Place the GitHub link at the absolute end
 af_analysis

@@ -108,8 +108,8 @@ def create_alphafold_json_files_streamlit(
 
     type_mapping = {
         'protein': 'proteinChain',
-        'dna': 'dnaChain',      # You can add others here too!
-        'rna': 'rnaChain'
+        'dna': 'dnaSequence',      # You can add others here too!
+        'rna': 'rnaSequence',
     }
 
     # Apply mapping. .get(x, x) ensures if it's not in the dict, it stays original
@@ -121,19 +121,35 @@ def create_alphafold_json_files_streamlit(
 
     jobs = []
     for jobid, group in grouped:
-        job = {
-            "name": str(jobid),
-            "modelSeeds": [],
-            "sequences": [
-                {
-                    row[type_col_name]: {
-                        "sequence": row[sequence_col_name],
-                        "count": int(row[count_col_name])
+        molecule_list = []
+        for _, molecule in group.iterrows():
+            entity_type = molecule[type_col_name]
+            val = str(molecule[sequence_col_name]).strip()
+            count = int(molecule[count_col_name])
+            print(molecule)
+            if molecule[type_col_name] == 'CCD_OLA':
+                entry = {
+                    "ligand": {
+                        "ligand": entity_type,
+                        "count": count
                     }
                 }
-                for _, row in group.iterrows()
-            ]
-        }
+            else:
+                entry = {
+                    entity_type: {
+                        "sequence": val,
+                        "count": count
+                    }
+                }
+            molecule_list.append(entry)
+
+        job = {
+                    "name": str(jobid),
+                    "modelSeeds": [], # AF3 usually expects at least one seed
+                    "sequences": molecule_list,
+                    "dialect": "alphafoldserver",
+                    "version": 1
+                }
         jobs.append(job)
 
     # Ensure output path exists

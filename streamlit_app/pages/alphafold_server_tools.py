@@ -99,17 +99,47 @@ if uploaded_file:
             df = pd.read_excel(uploaded_file)
 
         st.success("File loaded successfully!")
-        st.write("Preview:", df)
+
+        # --- NEW SELECTION FEATURE START ---
+        st.subheader("Select Rows for JSON Generation")
+        
+        # Add a selection column at the beginning
+        if "select" not in df.columns:
+            df.insert(0, "select", True) # Defaulting to True (all selected)
+
+        # Display the interactive editor
+        # 'column_config' makes the Select column a checkbox
+        edited_df = st.data_editor(
+            df,
+            column_config={
+                "select": st.column_config.CheckboxColumn(
+                    "select",
+                    help="Select rows to include in the JSON batch",
+                    default=True,
+                )
+            },
+            disabled=[col for col in df.columns if col != "select"], # Only allow editing the Checkbox
+            hide_index=True,
+        )
+
+        # Filter the dataframe based on selection
+        selected_df = edited_df[edited_df["select"] == True].drop(columns=["select"])
+        
+        st.write(f"Total rows selected: {len(selected_df)}")
+        # --- NEW SELECTION FEATURE END ---
+
+
+        # st.write("Preview:", df)
         
         # Save to session state for your JSON logic
-        st.session_state.df = df 
+        st.session_state.df = selected_df
 
     except Exception as e:
         st.error(f"Error loading file: {e}")
 
     # 2. When the button is clicked, save the output to session_state
     if st.button("Generate JSON Batches"):
-        st.session_state.json_results = utils.create_alphafold_json_files_streamlit(df)
+        st.session_state.json_results = utils.create_alphafold_json_files_streamlit(selected_df)
         st.success(f"Generated {len(st.session_state.json_results)} file(s)!")
 
     # 3. Always check if we have results in state. If yes, show the buttons.
